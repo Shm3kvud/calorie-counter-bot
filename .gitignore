@@ -11,3 +11,6 @@ wheels/
 
 #Config file
 config.py
+
+#db
+database\calories_counter.sqlite3
