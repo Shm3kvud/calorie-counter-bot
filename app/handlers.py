@@ -1,17 +1,19 @@
 from datetime import date
+from pydantic import ValidationError
 from aiogram import Router, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
-from texts import HELP_TEXT
-from states import Registration, UpdateProfile, EditProfile, DescForProduct
+from app.texts import HELP_TEXT
+from app.states import Registration, UpdateProfile, EditProfile, DescForProduct
 from app import keyboards as kb
-from database.sqlite_db import db
-from app.formatters import format_kbju
+from app import validators
+from app.formatters import format_kbju, format_errors
 from app.gemini_client import auto_set_kbju, get_product_kbju
+from database.sqlite_db import db
 
 
-#сделал обращение к геминай, нужно продлить чат акшн, +протестить добавление продукта и доделать его в целом
+#сделать валидаторы и форматтеры
 
 
 router = Router()
@@ -54,97 +56,181 @@ async def fill_again(message: Message, state: FSMContext):
 
 @router.message(Registration.age)
 async def get_age(message: Message, state: FSMContext):
-    age = int(message.text)
-    await state.update_data(age=age)
-    await state.set_state(Registration.height)
-    await message.answer(text="Хорошо! Введи свой текущий рост:")
+    try:
+        age = int(message.text)
+        validators.Registration(age=age)
+
+        await state.update_data(age=age)
+        await state.set_state(Registration.height)
+        await message.answer(text="Хорошо! Введи свой текущий рост:")
+
+    except ValidationError as e:
+        msg = format_errors(e.errors()[0]["msg"])
+        await message.answer(text=msg)
+    
+    except TypeError:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+    
+    except ValueError:
+        await message.answer(text="Возраст должен быть целым числом.")
     
     
 @router.message(Registration.height)
 async def get_height(message: Message, state: FSMContext):
-    height = float(message.text)
-    await state.update_data(height=height)
-    await state.set_state(Registration.weight)
-    await message.answer(text="Прекрасно! Введи свой текущий вес:")
+    msg = message.text
+    if "," in msg:
+        msg = msg.replace(",", ".")
+        
+    try:
+        height = float(msg)
+        validators.Registration(height=height)
+        
+        await state.update_data(height=height)
+        await state.set_state(Registration.weight)
+        await message.answer(text="Прекрасно! Введи свой текущий вес:")
+        
+    except ValidationError as e:
+        msg = format_errors(e.errors()[0]["msg"])
+        await message.answer(text=msg)
+        
+    except TypeError:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        
+    except ValueError:
+        await message.answer(text="Рост должен быть целым/вещественным числом.")
     
 
 @router.message(Registration.weight)
 async def get_weight(message: Message, state: FSMContext):
-    weight = float(message.text)
-    await state.update_data(weight=weight)
-    await state.set_state(Registration.goal)
-    await message.answer(text="Принято! Ты бы хотел(-а) набрать или похудеть?", reply_markup=kb.gain_lose_weight)
-    
+    height = float((await state.get_data())["height"])
+    try:
+        msg = message.text
+        if "," in msg:
+            msg = msg.replace(",", ".")
+            
+        weight = float(msg)
+        validators.Registration(height=height, weight=weight)
+                
+        await state.update_data(weight=weight)
+        await state.set_state(Registration.goal)
+        await message.answer(text="Принято! Ты бы хотел(-а) набрать или похудеть?", reply_markup=kb.gain_lose_weight)
+        
+    except ValidationError as e:
+        msg = format_errors(e.errors()[0]["msg"])
+        await message.answer(text=msg)
+        
+    except TypeError:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        
+    except ValueError:
+        await message.answer(text="Вес должен быть целым/вещественным числом.")
+        
     
 @router.message(Registration.goal)
 async def get_goal(message: Message, state: FSMContext):
-    await state.update_data(goal=message.text)
-    await message.answer(text=("Замечательно! Теперь выбери, установить"
-                               " значения КБЖУ самостоятельно или автоматически?"), reply_markup=kb.auto_or_by_yrslf)
-    await state.set_state(Registration.yourself_or_ai)
+    try:
+        validators.Registration(goal=message.text)
+                
+        await state.update_data(goal=message.text)
+        await message.answer(text=("Замечательно! Теперь выбери, установить"
+                                " значения КБЖУ самостоятельно или автоматически?"), reply_markup=kb.auto_or_by_yrslf)
+        await state.set_state(Registration.yourself_or_ai)
+        
+    except ValidationError as e:
+        msg = format_errors(e.errors()[0]["msg"])
+        await message.answer(text=msg)
     
     
 @router.message(Registration.yourself_or_ai)
 async def auto_or_ai(message: Message, state: FSMContext):
-    await state.update_data(yourself_or_ai=message.text)
+    try:
+        validators.Registration(kbju_setting=message.text)
+        
+        await state.update_data(yourself_or_ai=message.text)
     
-    if message.text == "Самостоятельно":
-        await state.set_state(Registration.kbju)
-        await message.answer(text=("Введи значения КБЖУ:\n"
-                               "Пример: 2500 120 60 370"), reply_markup=ReplyKeyboardRemove())
-    elif message.text == "Автоматически":
-        await state.set_state(Registration.gender)
-        await message.answer(text=("Выбери свой пол:\n\n"
-                                   "(этот и последующие выборы нужны для автоматического подсчета КБЖУ)"),
-                             reply_markup=kb.genders)
+        if message.text == "Самостоятельно":
+            await state.set_state(Registration.kbju)
+            await message.answer(text=("Введи значения КБЖУ:\n"
+                                "Пример: 2500 120 60 370"), reply_markup=ReplyKeyboardRemove())
+        elif message.text == "Автоматически":
+            await state.set_state(Registration.gender)
+            await message.answer(text=("Выбери свой пол:\n\n"
+                                    "(этот и последующие выборы нужны для автоматического подсчета КБЖУ)"),
+                                reply_markup=kb.genders)
+            
+    except ValidationError as e:
+        msg = format_errors(e.errors()[0]["msg"])
+        await message.answer(text=msg)
     
 
 @router.message(Registration.kbju)
 async def get_kbju(message: Message, state: FSMContext):
-    kbju = format_kbju(message.text)
+    try:
+        validators.ValuesKBJU(KBJU=message.text)
     
-    await state.update_data(kbju=kbju)
+        kbju = format_kbju(message.text)
     
-    data = await state.get_data()
-    
-    goal = data["goal"]
-    height = data["height"]
-    weight = data["weight"]
-    calories_goal = float(data["kbju"][0])
-    belki = float(data["kbju"][1])
-    jiri = float(data["kbju"][2])
-    uglevodi = float(data["kbju"][3])
-    
-    await db.save_data_in_db(telegram_id=message.from_user.id,
-                                   full_name=message.from_user.full_name,
-                                   goal=goal,
-                                   height=height,
-                                   weight=weight,
-                                   calories_goal=float(calories_goal),
-                                   belki=float(belki),
-                                   jiri=float(jiri),
-                                   uglevodi=float(uglevodi)
-                                   )
-    
-    await message.answer(text=("Круто! Теперь можешь пользоваться кнопками на месте твоей клавиатуры,"
-                               " чтобы пользоваться функциями бота."), reply_markup=kb.main_kb)
-    await state.clear()
+        await state.update_data(kbju=kbju)
+        
+        data = await state.get_data()
+        
+        goal = data.get("goal")
+        height = data.get("height")
+        weight = data.get("weight")
+        kbju = data.get("kbju")
+        calories_goal = float(kbju[0])
+        belki = float(kbju[1])
+        jiri = float(kbju[2])
+        uglevodi = float(kbju[3])
+        
+        await db.save_data_in_db(telegram_id=message.from_user.id,
+                                    full_name=message.from_user.full_name,
+                                    goal=goal,
+                                    height=height,
+                                    weight=weight,
+                                    calories_goal=float(calories_goal),
+                                    belki=float(belki),
+                                    jiri=float(jiri),
+                                    uglevodi=float(uglevodi)
+                                    )
+        
+        await message.answer(text=("Круто! Теперь можешь пользоваться кнопками на месте твоей клавиатуры,"
+                                " чтобы пользоваться функциями бота."), reply_markup=kb.main_kb)
+        await state.clear()
+        
+    except ValidationError as e:
+        msg = e.errors()[0]["msg"]
+        await message.answer(text=msg)
     
 
 @router.message(Registration.gender)
 async def get_gender(message: Message, state: FSMContext):
-    await state.update_data(gender=message.text)
-    await state.set_state(Registration.activity)
-    await message.answer(text="Выбери уровень твоей активности:", reply_markup=kb.activity)
+    try:
+        validators.Registration(gender=message.text)
+        await state.update_data(gender=message.text)
+        await state.set_state(Registration.activity)
+        await message.answer(text="Выбери уровень твоей активности:", reply_markup=kb.activity)
+        
+    except ValidationError as e:
+        msg = format_errors(e.errors()[0]["msg"])
+        await message.answer(text=msg)
+    
 
 
 @router.message(Registration.activity)
 async def get_activity(message: Message, state: FSMContext):
-    await state.update_data(activity=message.text)
-    await state.set_state(Registration.description)
-    await message.answer(text="Теперь дай описание своей активности, к примеру:\n\n"
-                         "'3 силовые тренировки в неделю', 'особо нет активности,"
-                         " максимум по дому похожу', 'легкие прогулки каждый день'", reply_markup=ReplyKeyboardRemove())
+    try:
+        validators.Registration(activity_level=message.text)
+        
+        await state.update_data(activity=message.text)
+        await state.set_state(Registration.description)
+        await message.answer(text="Теперь дай описание своей активности, к примеру:\n\n"
+                            "'3 силовые тренировки в неделю', 'особо нет активности,"
+                            " максимум по дому похожу', 'легкие прогулки каждый день'", reply_markup=ReplyKeyboardRemove())
+        
+    except ValidationError as e:
+        msg = format_errors(e.errors()[0]["msg"])
+        await message.answer(text=msg)
     
     
 @router.message(Registration.description)
@@ -154,13 +240,13 @@ async def get_desc(message: Message, state: FSMContext):
 
     temp_message = await message.answer(text="Идет вычисление...")
     
-    result = await auto_set_kbju(age=data["age"], 
-                                 height=data["height"],
-                                 weight=data["weight"],
-                                 goal=data["goal"],
-                                 gender=data["gender"],
-                                 activity=data["activity"],
-                                 activity_desc=data["description"])
+    result = await auto_set_kbju(age=data.get("age"), 
+                                 height=data.get("height"),
+                                 weight=data.get("weight"),
+                                 goal=data.get("goal"),
+                                 gender=data.get("gender"),
+                                 activity=data.get("activity"),
+                                 activity_desc=data.get("description"))
     
     k, b, j, u = result.split()
     
@@ -172,9 +258,9 @@ async def get_desc(message: Message, state: FSMContext):
     
     await db.save_data_in_db(telegram_id=message.from_user.id,
                                    full_name=message.from_user.full_name,
-                                   goal=data["goal"],
-                                   height=data["height"],
-                                   weight=data["weight"],
+                                   goal=data.get("goal"),
+                                   height=data.get("height"),
+                                   weight=data.get("weight"),
                                    calories_goal=float(k),
                                    belki=float(b),
                                    jiri=float(j),
@@ -202,34 +288,37 @@ async def add_product(message: Message, state: FSMContext):
 async def get_desc_product(message: Message, state: FSMContext):
     product_kbju = await get_product_kbju(message.text)
     
-    #валидировать
-    #если что то пойдет не так попросить еще раз, либо нажать /cancel
-    print(product_kbju)
-    k, b, j, u = product_kbju.split()
-    
-    today = date.today().isoformat()
-    progress_for_check = await db.show_daily_progress_from_db(user_id=message.from_user.id,
-                                                    today_date=today)
-    
-    if progress_for_check:
-        await db.add_product_to_progress(user_id=message.from_user.id,
-                                         calories=float(k),
-                                         belki=float(b),
-                                         jiri=float(j),
-                                         uglevodi=float(u),
-                                         date=today)
-    else:
-        await db.create_day_by_product_in_db(user_id=message.from_user.id,
-                                             calories=float(k),
-                                             belki=float(b),
-                                             jiri=float(j),
-                                             uglevodi=float(u),
-                                             date=today)
+    try:
+        validators.ValuesKBJU(KBJU=product_kbju)
         
-    await message.answer(text="КБЖУ продукта добавлены к прогрессу за сегодня!")
+        k, b, j, u = product_kbju.split()
     
-    await state.clear()
+        today = date.today().isoformat()
+        progress_for_check = await db.show_daily_progress_from_db(user_id=message.from_user.id,
+                                                        today_date=today)
         
+        if progress_for_check:
+            await db.add_product_to_progress(user_id=message.from_user.id,
+                                            calories=float(k),
+                                            belki=float(b),
+                                            jiri=float(j),
+                                            uglevodi=float(u),
+                                            date=today)
+        else:
+            await db.create_day_by_product_in_db(user_id=message.from_user.id,
+                                                calories=float(k),
+                                                belki=float(b),
+                                                jiri=float(j),
+                                                uglevodi=float(u),
+                                                date=today)
+            
+        await message.answer(text="КБЖУ продукта добавлены к прогрессу за сегодня!")
+        
+        await state.clear()
+        
+    except ValidationError as e:
+        msg = e.errors()[0]["msg"]
+        await message.answer(text=msg)
         
 
 @router.message(F.text == "🕰️ Прогресс за сегодня")
@@ -307,21 +396,28 @@ async def input_new_kbju(message: Message, state: FSMContext):
 
 @router.message(UpdateProfile.new_kbju)
 async def update_kbju(message: Message, state: FSMContext):
-    kbju_value = format_kbju(message.text)
+    try:
+        validators.ValuesKBJU(KBJU=message.text)
+        
+        kbju_value = format_kbju(message.text)
     
-    calories_goal = kbju_value[0]
-    belki = kbju_value[1]
-    jiri = kbju_value[2]
-    uglevodi = kbju_value[3]
-    
-    await db.update_data_in_db(user_id=message.from_user.id,
-                               calories_goal=calories_goal,
-                               belki=belki,
-                               jiri=jiri,
-                               uglevodi=uglevodi)
-    
-    await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
-    await state.clear()
+        calories_goal = kbju_value[0]
+        belki = kbju_value[1]
+        jiri = kbju_value[2]
+        uglevodi = kbju_value[3]
+        
+        await db.update_data_in_db(user_id=message.from_user.id,
+                                calories_goal=calories_goal,
+                                belki=belki,
+                                jiri=jiri,
+                                uglevodi=uglevodi)
+        
+        await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
+        await state.clear()
+        
+    except ValidationError as e:
+        msg = e.errors()[0]["msg"]
+        await message.answer(text=msg)
     
     
 @router.message(EditProfile.object, F.text == "Рост")
@@ -332,13 +428,22 @@ async def input_new_height(message: Message, state: FSMContext):
     
 @router.message(UpdateProfile.new_height)
 async def update_height(message: Message, state: FSMContext):
-    height_value =  message.text
-    
-    await db.update_data_in_db(user_id=message.from_user.id, height=height_value)
-    await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
-    
-    await state.clear()
-    
+    try:
+        height_value =  float(message.text)
+        validators.Registration(height=height_value)
+        
+        await db.update_data_in_db(user_id=message.from_user.id, height=height_value)
+        await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
+        
+        await state.clear()
+        
+    except ValueError:
+        await message.answer(text="Рост должен быть целым/вещественным числом.")
+        
+    except ValidationError as e:
+        msg = e.errors()[0]["msg"]
+        await message.answer(text=msg)
+        
     
 @router.message(EditProfile.object, F.text == "Вес")
 async def input_new_weight(message: Message, state: FSMContext):
@@ -348,12 +453,21 @@ async def input_new_weight(message: Message, state: FSMContext):
     
 @router.message(UpdateProfile.new_weight)
 async def update_weight(message: Message, state: FSMContext):
-    weight_value =  message.text
+    try:
+        weight_value =  float(message.text)
+        validators.Registration(weight=weight_value)
+        
+        await db.update_data_in_db(user_id=message.from_user.id, weight=weight_value)
+        await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
+        
+        await state.clear()
+        
+    except ValueError:
+        await message.answer(text="Вес должен быть целым/вещественным числом.")
     
-    await db.update_data_in_db(user_id=message.from_user.id, weight=weight_value)
-    await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
-    
-    await state.clear()
+    except ValidationError as e:
+        msg = e.errors()[0]["msg"]
+        await message.answer(text=msg)
     
     
 @router.message(EditProfile.object, F.text == "Цель")
@@ -364,9 +478,15 @@ async def input_new_goal(message: Message, state: FSMContext):
     
 @router.message(UpdateProfile.new_goal)
 async def update_goal(message: Message, state: FSMContext):
-    goal =  message.text
-    
-    await db.update_data_in_db(user_id=message.from_user.id, goal=goal)
-    await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
-    
-    await state.clear()
+    try:
+        goal =  message.text
+        validators.Registration(goal=goal)
+        
+        await db.update_data_in_db(user_id=message.from_user.id, goal=goal)
+        await message.answer(text="Данные успешно обновлены!", reply_markup=kb.main_kb)
+        
+        await state.clear()
+        
+    except ValidationError as e:
+        msg = e.errors()[0]["msg"]
+        await message.answer(text=msg)
