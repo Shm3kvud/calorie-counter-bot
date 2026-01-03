@@ -49,6 +49,3 @@ def format_week_history(history: list):
 
 
     return result_text
-
-
-format_week_history([(2500, 120, 60, 400, date(2026, 1, 4))])
