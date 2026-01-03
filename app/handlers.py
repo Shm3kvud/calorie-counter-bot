@@ -8,12 +8,9 @@ from app.texts import HELP_TEXT
 from app.states import Registration, UpdateProfile, EditProfile, DescForProduct
 from app import keyboards as kb
 from app import validators
-from app.formatters import format_kbju, format_errors
+from app.formatters import format_kbju, format_errors, format_daily_progress, format_week_history
 from app.gemini_client import auto_set_kbju, get_product_kbju
 from database.sqlite_db import db
-
-
-#сделать валидаторы и форматтеры
 
 
 router = Router()
@@ -23,8 +20,7 @@ router = Router()
 async def cmd_start(message: Message):
     await message.answer(text=("Привет! Это бот - счетчик калорий. "
                                "Он поможет тебе следить за твоим рационом и набрать/похудеть.\n\n"
-                               "Жми /go для начала работы!\n"
-                               "Команда /cancel поможет отменить тебе любое текущее действие.\n\n"))
+                               "Жми /go для начала работы!\n"))
     
     
 @router.message(Command("cancel"))
@@ -56,6 +52,10 @@ async def fill_again(message: Message, state: FSMContext):
 
 @router.message(Registration.age)
 async def get_age(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         age = int(message.text)
         validators.Registration(age=age)
@@ -68,15 +68,16 @@ async def get_age(message: Message, state: FSMContext):
         msg = format_errors(e.errors()[0]["msg"])
         await message.answer(text=msg)
     
-    except TypeError:
-        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
-    
     except ValueError:
         await message.answer(text="Возраст должен быть целым числом.")
     
     
 @router.message(Registration.height)
 async def get_height(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     msg = message.text
     if "," in msg:
         msg = msg.replace(",", ".")
@@ -93,15 +94,16 @@ async def get_height(message: Message, state: FSMContext):
         msg = format_errors(e.errors()[0]["msg"])
         await message.answer(text=msg)
         
-    except TypeError:
-        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
-        
     except ValueError:
         await message.answer(text="Рост должен быть целым/вещественным числом.")
     
 
 @router.message(Registration.weight)
 async def get_weight(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     height = float((await state.get_data())["height"])
     try:
         msg = message.text
@@ -119,15 +121,16 @@ async def get_weight(message: Message, state: FSMContext):
         msg = format_errors(e.errors()[0]["msg"])
         await message.answer(text=msg)
         
-    except TypeError:
-        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
-        
     except ValueError:
         await message.answer(text="Вес должен быть целым/вещественным числом.")
         
     
 @router.message(Registration.goal)
 async def get_goal(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         validators.Registration(goal=message.text)
                 
@@ -143,6 +146,10 @@ async def get_goal(message: Message, state: FSMContext):
     
 @router.message(Registration.yourself_or_ai)
 async def auto_or_ai(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         validators.Registration(kbju_setting=message.text)
         
@@ -165,6 +172,10 @@ async def auto_or_ai(message: Message, state: FSMContext):
 
 @router.message(Registration.kbju)
 async def get_kbju(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         validators.ValuesKBJU(KBJU=message.text)
     
@@ -205,6 +216,10 @@ async def get_kbju(message: Message, state: FSMContext):
 
 @router.message(Registration.gender)
 async def get_gender(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         validators.Registration(gender=message.text)
         await state.update_data(gender=message.text)
@@ -219,6 +234,10 @@ async def get_gender(message: Message, state: FSMContext):
 
 @router.message(Registration.activity)
 async def get_activity(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         validators.Registration(activity_level=message.text)
         
@@ -234,7 +253,7 @@ async def get_activity(message: Message, state: FSMContext):
     
     
 @router.message(Registration.description)
-async def get_desc(message: Message, state: FSMContext):
+async def get_desc(message: Message, state: FSMContext):    
     await state.update_data(description=message.text)
     data = await state.get_data()
 
@@ -286,6 +305,10 @@ async def add_product(message: Message, state: FSMContext):
     
 @router.message(DescForProduct.desc)
 async def get_desc_product(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     product_kbju = await get_product_kbju(message.text)
     
     try:
@@ -327,12 +350,11 @@ async def show_daily_progress(message: Message):
     
     progress = await db.show_daily_progress_from_db(user_id=message.from_user.id,
                                                     today_date=today)
+    progress_goal = await db.get_progress_goal(telegram_id=message.from_user.id)
     
-    calories, belki, jiri, uglevodi = progress
-
     if progress:
-        format_progress = f'Текущие значения кбжу: {calories} | {belki} | {jiri} | {uglevodi}'
-        await message.answer(text=format_progress)
+        text = format_daily_progress(progress=progress, progress_goal=progress_goal)
+        await message.answer(text=text)
     else:
         await message.answer(text="Сегодня ты еще ничего не ел. Не забудь поесть сегодня!")
 
@@ -341,7 +363,9 @@ async def show_daily_progress(message: Message):
 async def show_week_history(message: Message):
     history = await db.show_week_history_from_db(user_id=message.from_user.id)
     
-    await message.answer(text=f'{history}')
+    text = format_week_history(history=history)
+    
+    await message.answer(text=text)
 
 
 @router.message(F.text == "🙂 Мой профиль")
@@ -396,6 +420,10 @@ async def input_new_kbju(message: Message, state: FSMContext):
 
 @router.message(UpdateProfile.new_kbju)
 async def update_kbju(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         validators.ValuesKBJU(KBJU=message.text)
         
@@ -428,6 +456,10 @@ async def input_new_height(message: Message, state: FSMContext):
     
 @router.message(UpdateProfile.new_height)
 async def update_height(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         height_value =  float(message.text)
         validators.Registration(height=height_value)
@@ -453,6 +485,10 @@ async def input_new_weight(message: Message, state: FSMContext):
     
 @router.message(UpdateProfile.new_weight)
 async def update_weight(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         weight_value =  float(message.text)
         validators.Registration(weight=weight_value)
@@ -478,6 +514,10 @@ async def input_new_goal(message: Message, state: FSMContext):
     
 @router.message(UpdateProfile.new_goal)
 async def update_goal(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(text="Кажется, ты не ввел текст, попробуй еще раз.")
+        return
+    
     try:
         goal =  message.text
         validators.Registration(goal=goal)

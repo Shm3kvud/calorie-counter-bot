@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, model_validator, field_validator
-from typing import Optional, Literal
+from typing import Optional
 
 
 
@@ -7,8 +7,7 @@ class Registration(BaseModel):
     age: Optional[int] = Field(None, description="возраст, от 12 до 122")
     height: Optional[float] = Field(None, desValueErrorcription="рост, от 130 до 210")
     weight: Optional[float] = Field(None, description="вес, от 20 до 300")
-    goal: Optional[str] = Field(None,
-                                                           description="цель")
+    goal: Optional[str] = Field(None, description="цель")
     kbju_setting: Optional[str] = Field(None, description="вариант установки кбжу")
     gender: Optional[str] = Field(None, description="пол")
     activity_level: Optional[str] = Field(None, description="уровень активности")

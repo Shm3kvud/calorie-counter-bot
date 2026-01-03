@@ -3,6 +3,8 @@ from aiogram.types import Message
 from typing import Callable, Dict, Any, Awaitable
 
 
+#not use, vibecoding!!!
+#позорно в каждом хендлере сделал проверку на пустой текст
 class TextCheckMiddleware(BaseMiddleware):
     async def __call__(self,
                        handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],

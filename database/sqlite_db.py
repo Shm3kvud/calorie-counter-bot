@@ -254,4 +254,19 @@ class Database:
             return None
         
         
+    async def get_progress_goal(self, telegram_id):
+        async with aiosqlite.connect(self.db_path) as db:
+            from_indicators = await db.execute('''
+                                               SELECT calories_goal, belki, jiri, uglevodi
+                                               FROM indicators
+                                               WHERE user_id = ?
+                                               ''', (telegram_id,))
+
+            result = await from_indicators.fetchone()
+            
+            if result:
+                return result
+            return None
+        
+        
 db = Database()
