@@ -356,7 +356,13 @@ async def add_product(message: Message, state: FSMContext):
 
     await message.answer(
         text="Введите описание того, что хотите добавить:\n\n"
-        "Пример: 150г куриной грудки и 200г риса"
+        "Пример: 150г куриной грудки и 200г риса\n\n"
+        "Пока что бот в степени ранней разработки, "
+        "просьба формировать описание подробно, "
+        "т.к. при описании: чай с 3 кубиками сахара и бутерброды "
+        "- он его не распознает, хороший пример: 1 кружка "
+        "черного чая с 3 средними кубиками сахара и 3 бутерброда "
+        "с колбасой и сыром"
     )
 
 
@@ -428,7 +434,7 @@ async def show_daily_progress(message: Message):
 async def show_week_history(message: Message):
     history = await db.show_week_history(user_id=message.from_user.id)
     progress_goal = await db.get_progress_goal(telegram_id=message.from_user.id)
-    
+
     text = format_week_history(history=history, progress_goal=progress_goal)
 
     await message.answer(text=text)

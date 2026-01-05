@@ -13,4 +13,4 @@ wheels/
 configs
 
 #db
-database/calories_counter.sqlite3
+database\calories_counter.sqlite3
