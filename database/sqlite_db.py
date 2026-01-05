@@ -69,7 +69,7 @@ class Database:
             print("Бд инициализирована!")
             
             
-    async def create_day_by_product_in_db(self, user_id, 
+    async def create_day_by_product(self, user_id, 
                                           calories, belki,
                                           jiri, uglevodi, date):
         async with aiosqlite.connect(self.db_path) as db:
@@ -121,7 +121,7 @@ class Database:
             await db.commit()
     
     
-    async def save_data_in_db(self, telegram_id: int, full_name: str, goal: str,
+    async def save_data(self, telegram_id: int, full_name: str, goal: str,
                               height: float, weight: float, calories_goal: float,
                               belki: float, jiri: float, uglevodi: float):
         async with aiosqlite.connect(self.db_path) as db:
@@ -152,7 +152,7 @@ class Database:
             await db.commit()
     
     
-    async def update_data_in_db(self, user_id, goal=None, height=None,
+    async def update_data(self, user_id, goal=None, height=None,
                                 weight=None, calories_goal=None, belki=None,
                                 jiri=None, uglevodi=None):
         async with aiosqlite.connect(self.db_path) as db:
@@ -199,7 +199,7 @@ class Database:
                 await db.commit()
             
         
-    async def show_daily_progress_from_db(self, user_id, today_date):
+    async def show_daily_progress(self, user_id, today_date):
         async with aiosqlite.connect(self.db_path) as db:
             curr_day = await db.execute('''
                              SELECT calories, belki, jiri, uglevodi
@@ -214,7 +214,7 @@ class Database:
             return None
             
     
-    async def show_week_history_from_db(self, user_id):
+    async def show_week_history(self, user_id):
         async with aiosqlite.connect(self.db_path) as db:
             weekly_data = await db.execute('''
                                            SELECT calories, belki, jiri, uglevodi, days_date

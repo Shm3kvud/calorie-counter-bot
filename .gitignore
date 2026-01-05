@@ -9,8 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
-#Config file
-config.py
+#Config folder
+configs
 
 #db
-database\calories_counter.sqlite3
+database/calories_counter.sqlite3

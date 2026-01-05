@@ -12,40 +12,46 @@ def format_errors(string: str):
 
 
 def format_daily_progress(progress: tuple, progress_goal: tuple):
-    text = ""
+    result_text = ""
     try:
         calories, belki, jiri, uglevodi = progress
         calories_goal, belki_goal, jiri_goal, uglevodi_goal = progress_goal
 
-        text = f"""Текущие значения:
+        result_text = f"""Текущие значения:
     К - {int(calories)}/{int(calories_goal)}
     Б - {int(belki)}/{int(belki_goal)}
     Ж - {int(jiri)}/{int(jiri_goal)}
     У - {int(uglevodi)}/{int(uglevodi_goal)}"""
 
-        return text
+        return result_text
 
     except Exception:
-        text = "Что-то пошло не так"
-        return text
+        result_text = "Что-то пошло не так"
+        return result_text
 
 
-def format_week_history(history: list):
+def format_week_history(history: list, progress_goal: tuple):
     today_date = date.today()
-    dates = list(today_date - timedelta(days=i) for i in range(0, 7))
+    dates = list((today_date - timedelta(days=i)).isoformat() for i in range(0, 7))
     layout = [(0, 0, 0, 0, date_) for date_ in reversed(dates)]
-    result_text = f"История за неделю:\n{'-' * 40}\n"
+    result_text = f"История за неделю:\n{'-' * 50}\n"
+    calories_goal, belki_goal, jiri_goal, uglevodi_goal = progress_goal
 
     for day_from_history in range(len(history)):
         for day_from_layout in range(len(layout)):
             if history[day_from_history][-1] == layout[day_from_layout][-1]:
                 layout[day_from_layout] = history[day_from_history]
-
+            
     for day_from_layout in layout:
-        result_text += (f"Дата: {day_from_layout[-1].strftime("%d.%m.%Y")}\n"
-                        f"К - {day_from_layout[0]} | Б - {day_from_layout[1]} |"
-                        f"Ж - {day_from_layout[2]} | У - {day_from_layout[3]}\n"
-                        f"{"-" * 40}\n")
-
+        calories, belki, jiri, uglevodi = day_from_layout[0], day_from_layout[1], day_from_layout[2], day_from_layout[3]
+        
+        result_text += (
+            f"Дата: {day_from_layout[-1]}\n"
+            f"К - {int(calories)}/{int(calories_goal)}\n"
+            f"Б - {int(belki)}/{int(belki_goal)}\n"
+            f"Ж - {int(jiri)}/{int(jiri_goal)}\n"
+            f"У - {int(uglevodi)}/{int(uglevodi_goal)}\n"
+            f"{'-' * 50}\n"
+        )
 
     return result_text

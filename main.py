@@ -1,8 +1,8 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from config import TOKEN
-from app import handlers
+from configs.config import TOKEN
+from app.handlers import handlers
 from database.sqlite_db import db
 # from app.middlewares import TextCheckMiddleware
 
