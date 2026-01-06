@@ -1,13 +1,13 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from configs.config import TOKEN
+from configs.config import BOT_TOKEN
 from app.handlers import handlers
 from database.sqlite_db import db
 # from app.middlewares import TextCheckMiddleware
 
 
-bot = Bot(token=TOKEN)
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 

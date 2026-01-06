@@ -9,8 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
-#Config folder
-configs
+#.env
+.env
+*.env
 
 #db
 database/calories_counter.sqlite3
