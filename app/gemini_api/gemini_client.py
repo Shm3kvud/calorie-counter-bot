@@ -23,7 +23,7 @@ async def auto_set_kbju(age, height, weight, goal, gender, activity, activity_de
 
 
 async def get_product_kbju(description):
-    text = f"""Задача: посчитать КБЖУ блюда по описанию.
+    text = f"""Задача: посчитать суммарное КБЖУ блюда по описанию.
     Описание: {description}
     Для сложных или редких продуктов используй МАКСИМАЛЬНО средние значения,
     даже если посчитать нельзя, или значения будут неверные, 

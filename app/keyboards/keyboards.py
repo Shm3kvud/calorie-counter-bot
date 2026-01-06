@@ -1,7 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # main_kb
-add_product = KeyboardButton(text="🥗 Добавить продукт")
+add_product = KeyboardButton(text="🥗 Добавить продукты")
 my_profile = KeyboardButton(text="🙂 Мой профиль")
 show_daily_progress = KeyboardButton(text="🕰️ Прогресс за сегодня")
 show_week_history = KeyboardButton(text="🗓️ Отобразить историю недели")
