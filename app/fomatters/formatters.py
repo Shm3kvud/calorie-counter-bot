@@ -18,10 +18,10 @@ def format_daily_progress(progress: tuple, progress_goal: tuple):
         calories_goal, belki_goal, jiri_goal, uglevodi_goal = progress_goal
 
         result_text = f"""Текущие значения:
-    К - {int(calories)}/{int(calories_goal)}
-    Б - {int(belki)}/{int(belki_goal)}
-    Ж - {int(jiri)}/{int(jiri_goal)}
-    У - {int(uglevodi)}/{int(uglevodi_goal)}"""
+К - {int(calories)}/{int(calories_goal)}
+Б - {int(belki)}/{int(belki_goal)}
+Ж - {int(jiri)}/{int(jiri_goal)}
+У - {int(uglevodi)}/{int(uglevodi_goal)}"""
 
         return result_text
 

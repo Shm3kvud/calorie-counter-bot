@@ -3,7 +3,7 @@ from google import genai
 
 
 client = genai.Client(api_key=GEMINI_API_KEY).aio
-model = "gemini-2.5-flash-lite"
+model = "gemini-2.5-flash"
 
 
 async def auto_set_kbju(age, height, weight, goal, gender, activity, activity_desc):
