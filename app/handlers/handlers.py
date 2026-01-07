@@ -8,14 +8,14 @@ from app.texts.texts import HELP_TEXT
 from app.states.states import Registration, UpdateProfile, EditProfile, DescForProduct
 from app.keyboards import keyboards as kb
 from app.validators import validators
-from app.fomatters.formatters import (
+from app.formatters.formatters import (
     format_kbju,
     format_errors,
     format_daily_progress,
     format_week_history,
 )
 from app.gemini_api.gemini_client import auto_set_kbju, get_product_kbju
-from database.sqlite_db import db
+from app.database.sqlite_db import db
 
 
 router = Router()

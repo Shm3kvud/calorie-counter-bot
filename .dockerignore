@@ -1,0 +1,10 @@
+.env
+.env.example
+
+__pycache__/
+.python-version
+.venv/
+.git/
+.gitignore
+
+data/

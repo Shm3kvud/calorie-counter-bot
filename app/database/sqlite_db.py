@@ -1,12 +1,15 @@
 import aiosqlite
 from pathlib import Path
 
+base_dir = Path(__file__).resolve().parent.parent.parent
+data_dir = base_dir / "data"
+data_dir.mkdir(exist_ok=True)
 
-path = Path("database") / "calories_counter.sqlite3"
+db_path = data_dir / "calories_counter.sqlite3"
 
 
 class Database:
-    def __init__(self, db_path=path):
+    def __init__(self, db_path=db_path):
         self.db_path = db_path
         
     async def init_db(self):

@@ -13,5 +13,5 @@ wheels/
 .env
 *.env
 
-#db
-database/calories_counter.sqlite3
+#db file
+data/
